@@ -3,6 +3,7 @@ import * as path from "jsr:@std/path@^1.0.8";
 
 import { ZipWriter } from "https://deno.land/x/zipjs@v2.7.53/index.js";
 import last from "jsr:@cordor/array-last@^0.1.1";
+import { Octokit, App } from "https://esm.sh/octokit?dts";
 
 export function resolveArchiveName(dir: string) {
   return `${last(path.resolve(dir).split(path.SEPARATOR))}.zip`;
@@ -55,11 +56,67 @@ export async function deleteArchivedDirectory(files: string[]) {
   }
 }
 
+export async function gitRemote(gitPath: string) {
+  const output = await new Deno.Command("git", {
+    args: [
+      `--git-dir=${gitPath}/.git`,
+      `--work-tree=${gitPath}`,
+      "remote",
+      "-v",
+    ],
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+
+  const outStr = new TextDecoder().decode(output.stdout);
+
+  const remotes = outStr.split("\n");
+
+  for (const remote of remotes) {
+    if (remote.includes("(fetch)") && remote.startsWith("origin")) {
+      return remote.split(/\s+/)[1];
+    }
+  }
+}
+
+export async function deleteGitRepo(remote: string) {
+  const ockto = new Octokit({
+    auth: Deno.env.get("GITHUB_TOKEN"),
+  });
+
+  console.log(parseGitRemote(remote));
+  const { owner, repo: repoName } = parseGitRemote(remote);
+
+  console.log("Deleting repo");
+
+  const repo = await ockto.rest.repos.delete({
+    owner,
+    repo: repoName,
+  });
+
+  console.log("Deleted repo");
+}
+
+export function parseGitRemote(remote: string) {
+  const splitRemote = remote.split("/");
+
+  const repo = last(splitRemote).replace(".git", "");
+  splitRemote.pop();
+  const owner = last(splitRemote);
+
+  return {
+    owner,
+    repo,
+  };
+}
+
 // Learn more at https://docs.deno.com/runtime/manual/examples/module_metadata#concepts
 if (import.meta.main) {
-  const dir = Deno.args[0];
+  const dir = path.resolve(Deno.args[0]);
 
   const archiveFile = resolveArchiveName(dir);
   const files = await archiveDirectory(archiveFile, dir);
   await deleteArchivedDirectory(files);
+  const remote = await gitRemote(dir);
+  await deleteGitRepo(remote!);
 }
