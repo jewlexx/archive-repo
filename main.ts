@@ -1,4 +1,4 @@
-import { walk } from "jsr:@std/fs@^1.0.6/walk";
+import { walk, WalkEntry } from "jsr:@std/fs@^1.0.6/walk";
 import * as path from "jsr:@std/path@^1.0.8";
 import { parseArgs } from "jsr:@std/cli/parse-args";
 
@@ -16,11 +16,8 @@ export function resolveArchiveName(dir: string) {
  * @param dir
  * @returns A list of the files that were added to the archive
  */
-export async function archiveDirectory(
-  dest: string,
-  dir: string
-): Promise<string[]> {
-  const fileList = [];
+export async function archiveDirectory(dest: string, dir: string) {
+  const fileList: WalkEntry[] = [];
 
   const zipFileStream = new TransformStream();
 
@@ -30,11 +27,11 @@ export async function archiveDirectory(
   const zipWriter = new ZipWriter(zipFileStream.writable);
 
   for await (const entry of walk(dir)) {
+    fileList.push(entry);
     if (entry.isFile) {
       if (entry.path == dest) {
         continue;
       }
-      fileList.push(entry.path);
       console.log(`Archiving ${entry.path}`);
       await zipWriter.add(entry.path, await Deno.open(entry.path));
     }
@@ -50,10 +47,19 @@ export async function archiveDirectory(
   return fileList;
 }
 
-export async function deleteArchivedDirectory(files: string[]) {
+export async function deleteArchivedDirectory(files: WalkEntry[]) {
   for (const file of files) {
-    console.log(`Deleting ${file}`);
-    await Deno.remove(file);
+    if (file.isFile) {
+      console.log(`Deleting ${file.path}`);
+      await Deno.remove(file.path);
+    }
+  }
+
+  for (const file of files.reverse()) {
+    if (!file.isFile) {
+      console.log(`Deleting ${file.path}`);
+      await Deno.remove(file.path);
+    }
   }
 }
 
