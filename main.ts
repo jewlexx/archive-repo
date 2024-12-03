@@ -1,9 +1,10 @@
 import { walk } from "jsr:@std/fs@^1.0.6/walk";
 import * as path from "jsr:@std/path@^1.0.8";
+import { parseArgs } from "jsr:@std/cli/parse-args";
 
 import { ZipWriter } from "https://deno.land/x/zipjs@v2.7.53/index.js";
 import last from "jsr:@cordor/array-last@^0.1.1";
-import { Octokit, App } from "https://esm.sh/octokit?dts";
+import { Octokit } from "https://esm.sh/octokit@4.0.2?dts";
 
 export function resolveArchiveName(dir: string) {
   return `${last(path.resolve(dir).split(path.SEPARATOR))}.zip`;
@@ -89,7 +90,7 @@ export async function deleteGitRepo(remote: string) {
 
   console.log("Deleting repo");
 
-  const repo = await ockto.rest.repos.delete({
+  await ockto.rest.repos.delete({
     owner,
     repo: repoName,
   });
@@ -112,11 +113,32 @@ export function parseGitRemote(remote: string) {
 
 // Learn more at https://docs.deno.com/runtime/manual/examples/module_metadata#concepts
 if (import.meta.main) {
-  const dir = path.resolve(Deno.args[0]);
+  const args = parseArgs(Deno.args, {
+    boolean: ["deleteFiles", "deleteRepo"],
+    string: ["dir"],
+    default: {
+      deleteFiles: true,
+      deleteRepo: true,
+    },
+    negatable: ["deleteRepo", "deleteFiles"],
+  });
+
+  if (args.dir === undefined) {
+    console.log("Missing argument: dir");
+    Deno.exit(1);
+  }
+
+  const dir = path.resolve(args.dir);
 
   const archiveFile = resolveArchiveName(dir);
   const files = await archiveDirectory(archiveFile, dir);
-  await deleteArchivedDirectory(files);
-  const remote = await gitRemote(dir);
-  await deleteGitRepo(remote!);
+
+  if (args.deleteFiles) {
+    await deleteArchivedDirectory(files);
+  }
+
+  if (args.deleteRepo) {
+    const remote = await gitRemote(dir);
+    await deleteGitRepo(remote!);
+  }
 }
