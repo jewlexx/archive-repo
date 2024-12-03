@@ -1,8 +1,8 @@
-import { walk } from "@std/fs/walk";
-import * as path from "@std/path";
+import { walk } from "jsr:@std/fs@^1.0.6/walk";
+import * as path from "jsr:@std/path@^1.0.8";
 
-import { ZipWriter } from "zipjs";
-import last from "@cordor/array-last";
+import { ZipWriter } from "https://deno.land/x/zipjs@v2.7.53/index.js";
+import last from "jsr:@cordor/array-last@^0.1.1";
 
 export function resolveArchiveName(dir: string) {
   return `${last(path.resolve(dir).split(path.SEPARATOR))}.zip`;
