@@ -60,5 +60,6 @@ if (import.meta.main) {
   const dir = Deno.args[0];
 
   const archiveFile = resolveArchiveName(dir);
-  await archiveDirectory(archiveFile, dir);
+  const files = await archiveDirectory(archiveFile, dir);
+  await deleteArchivedDirectory(files);
 }
