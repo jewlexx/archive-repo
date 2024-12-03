@@ -1,0 +1,13 @@
+{
+  "tasks": {
+    "dev": "deno run --watch main.ts"
+  },
+  "imports": {
+    "@cordor/array-last": "jsr:@cordor/array-last@^0.1.1",
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/fs": "jsr:@std/fs@^1.0.6",
+    "@std/path": "jsr:@std/path@^1.0.8",
+    "octokit": "npm:octokit@^4.0.2",
+    "zipjs": "https://deno.land/x/zipjs@v2.7.53/index.js"
+  }
+}
